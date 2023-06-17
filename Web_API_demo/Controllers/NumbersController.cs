@@ -35,21 +35,25 @@ namespace Web_API_demo.Controllers
                     // initiate GET request using await keyword so that it will the using statement in order
                     using(HttpResponseMessage res = await client.GetAsync(url)) 
                     {
-                        // get the data content from the response 
-                        using(HttpContent content = res.Content)
+                        if (res.IsSuccessStatusCode)
                         {
-                            // convert the content to string data and return
-                            var data = await content.ReadAsStringAsync();
-                            return data;
+                            // get the data content from the response 
+                            using (HttpContent content = res.Content)
+                            {
+                                // convert the content to string data and return
+                                var data = await content.ReadAsStringAsync();
+                                return data;
+                            }
                         }
+                        return res.StatusCode.ToString(); 
                     }
                 }
             }
             catch (Exception ex)
             {
-                return ex.ToString();
+                Console.WriteLine(ex.Message);
+                throw;
             }
-
         }
 
     }
