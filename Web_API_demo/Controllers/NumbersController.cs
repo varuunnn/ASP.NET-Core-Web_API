@@ -4,7 +4,7 @@ using System.Net.Http;
 
 namespace Web_API_demo.Controllers
 {
-    // Tells us 
+    
     [Route("api/[controller]")]
     [ApiController]
     public class NumbersController : ControllerBase
@@ -45,7 +45,7 @@ namespace Web_API_demo.Controllers
                                 return data;
                             }
                         }
-                        return res.StatusCode.ToString(); 
+                        return res.StatusCode.ToString();
                     }
                 }
             }
