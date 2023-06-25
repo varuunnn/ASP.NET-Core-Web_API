@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Web_API_demo.Data;
 using Web_API_demo.Models;
+using Web_API_demo.Services;
 
 namespace Web_API_demo.Controllers
 {
@@ -10,23 +11,34 @@ namespace Web_API_demo.Controllers
     public class ContactsController : Controller
     {
         // private dbContext used to talk to the database
-        private readonly ContactsAPIDbContext dbContext;
+        // private readonly ContactsAPIDbContext dbContext;
 
-        private ILogger<ContactsController> logger;
+        private readonly IContactsService _contactsService;
+
+        private readonly ILogger<ContactsController> logger;
         
         // inject ContactsAPIDbContext into the controller
-        public ContactsController(ContactsAPIDbContext dbContext, ILogger<ContactsController> logger) 
+        public ContactsController(IContactsService contactsService, ILogger<ContactsController> _logger) 
         {
-            this.dbContext = dbContext;
-            this.logger = logger;
+            _contactsService = contactsService;
+            logger = _logger;
         }
+
 
         // get method to get all the contacts
         [HttpGet]
-        public async Task<IActionResult> GetContact()
+        public async Task<IActionResult> GetAllContacts()
         {
-            logger.LogInformation("Executing {Action}", nameof(GetContact));
-            return Ok( await dbContext.Contacts.ToListAsync());
+            logger.LogInformation("Executing {Action}", nameof(GetAllContacts));
+            var res = await _contactsService.GetAllContacts();
+            if(res != null) 
+            {
+                logger.LogInformation("Retrievd all contacts");
+                return Ok(res);
+            }
+            
+            logger.LogError("No contacts available");
+            return BadRequest("Error while retrieving data");
         }
 
         // get method to get a specific contact using 'id' as a parameter in route
@@ -35,15 +47,16 @@ namespace Web_API_demo.Controllers
         public async Task<IActionResult> GetContact([FromRoute] Guid id)
         {
             logger.LogInformation("Executing {Action} with parameters {id}", nameof(GetContact), id);
-            var contact = await dbContext.Contacts.FindAsync(id);
-            if(contact == null)
+            var contact = await _contactsService.GetContact(id);
+            if(contact != null)
             {
-                logger.LogError("Contact not found");
-                return NotFound();
+                logger.LogInformation("Contact found: {name}", contact.Name);
+                return Ok(contact);
+                
             }
 
-            logger.LogInformation("Contact found: {name}", contact.Name);
-            return Ok(contact);
+            logger.LogError("Contact not found");
+            return NotFound();
         }
 
         // add a new contact to the databse
@@ -51,20 +64,11 @@ namespace Web_API_demo.Controllers
         public async Task<IActionResult> AddContact(AddContactsRequest addContactRequest)
         {
             logger.LogInformation("Executing {Action}", nameof(AddContact));
-            var contact = new Contact()
-            {
-                Id = Guid.NewGuid(),
-                Name = addContactRequest.Name,
-                Email = addContactRequest.Email,
-                Phone = addContactRequest.Phone
-            };
-
-            var res = await dbContext.Contacts.AddAsync(contact);
+            var res = await _contactsService.AddContact(addContactRequest);
             if(res != null)
             {
-                await dbContext.SaveChangesAsync();
                 logger.LogInformation("Contact added: {name}", addContactRequest.Name);
-                return Ok(contact);
+                return Ok(res);
             }
 
             logger.LogError("Error while inserting contact");
@@ -78,20 +82,28 @@ namespace Web_API_demo.Controllers
         public async Task<IActionResult> UpdateContact([FromRoute] Guid id, UpdateContactRequest updateContactRequest)
         {
             logger.LogInformation("Executing {Action}", nameof(UpdateContact));
-            var contact = await dbContext.Contacts.FindAsync(id);
 
-            if(contact != null)
+            if(updateContactRequest == null)
             {
-                contact.Name = updateContactRequest.Name;   
-                contact.Email = updateContactRequest.Email;
-                contact.Phone = updateContactRequest.Phone;
-
-                await dbContext.SaveChangesAsync();
-                logger.LogInformation("Contact updated: {name}", updateContactRequest.Name);
-                return Ok(contact);
+                logger.LogError("Null input passed");
+                return BadRequest("Null input passed");
             }
+            if (!ModelState.IsValid)
+            {
+                logger.LogError("Object input format incorrect");
+                return BadRequest("Object input format incorrect");
+            }
+
+            int res = await _contactsService.UpdateContact(id, updateContactRequest);
+            if(res != 0)
+            {
+                logger.LogInformation("Contact updated: {name}", updateContactRequest.Name);
+                return Ok();
+            }
+
             logger.LogError("Contact not found");
-            return NotFound();
+            return NotFound("Contact not found");
+
         }
 
         // delete a contact from database
@@ -100,14 +112,12 @@ namespace Web_API_demo.Controllers
         public async Task<IActionResult> DeleteContact([FromRoute] Guid id)
         {
             logger.LogInformation("Executing {Action}", nameof(DeleteContact));
-            var contact = dbContext.Contacts.Find(id);
+            int res = await _contactsService.DeleteContact(id);
 
-            if(contact != null)
+            if(res == 1)
             {
-                dbContext.Remove(contact);
-                await dbContext.SaveChangesAsync();
-                logger.LogInformation("Contact deleted: {name}", contact.Name);
-                return Ok(contact);
+                logger.LogInformation("Contact deleted");
+                return Ok();
             }
 
             logger.LogError("Contact not found");
