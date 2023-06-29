@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Web_API_demo.Data;
 using Web_API_demo.Models;
@@ -6,24 +7,20 @@ using Web_API_demo.Services;
 
 namespace Web_API_demo.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ContactsController : Controller
     {
-        // private dbContext used to talk to the database
-        // private readonly ContactsAPIDbContext dbContext;
-
         private readonly IContactsService _contactsService;
-
-        private readonly ILogger<ContactsController> logger;
+        private readonly ILogger logger;
         
         // inject ContactsAPIDbContext into the controller
-        public ContactsController(IContactsService contactsService, ILogger<ContactsController> _logger) 
+        public ContactsController(IContactsService contactsService, ILogger _logger) 
         {
             _contactsService = contactsService;
             logger = _logger;
         }
-
 
         // get method to get all the contacts
         [HttpGet]
